@@ -20,9 +20,10 @@ export function AuthProvider({ children }) {
       .finally(() => setLoading(false))
   }, [])
 
-  async function login(email, password) {
+  // `remember` decides whether the token survives closing the browser.
+  async function login(email, password, remember = true) {
     const { token, user } = await api.login({ email, password })
-    setToken(token)
+    setToken(token, remember)
     setUser(user)
     return user
   }

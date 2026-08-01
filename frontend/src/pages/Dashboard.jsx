@@ -1,21 +1,30 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
+import {
+  Users2, UserPlus, ShieldCheck, Eye, ArrowRight, Mail, BadgeCheck,
+  CalendarDays, Activity,
+} from 'lucide-react'
+
 import { useAuth } from '../context/AuthContext'
 import { api } from '../services/api'
-
-const ROLE_BADGE = {
-  admin: 'bg-indigo-100 text-indigo-700',
-  viewer: 'bg-emerald-100 text-emerald-700',
-}
+import AppLayout, { PageHeader } from '../components/layout/AppLayout'
+import Card, { SectionTitle } from '../components/ui/Card'
+import Button from '../components/ui/Button'
+import Badge from '../components/ui/Badge'
+import CopyId from '../components/ui/CopyId'
+import UserAvatar from '../components/connections/UserAvatar'
+import { displayName, relativeTime } from '../utils/format'
 
 export default function Dashboard() {
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
+  const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
+  const isViewer = user?.role === 'viewer'
 
-  // Shared endpoint — both roles can read this.
   const [stats, setStats] = useState(null)
   const [statsError, setStatsError] = useState('')
+  const [connCount, setConnCount] = useState(null)
+  const [pendingCount, setPendingCount] = useState(0)
+  const [requests, setRequests] = useState([])
 
   useEffect(() => {
     api.stats()
@@ -23,98 +32,273 @@ export default function Dashboard() {
       .catch((err) => setStatsError(err.message))
   }, [])
 
-  function handleLogout() {
-    logout()
-    navigate('/', { replace: true })
-  }
+  useEffect(() => {
+    if (!isViewer) return
+    api.friends().then((d) => setConnCount(d.connectionCount)).catch(() => {})
+    api.incomingRequests()
+      .then((d) => {
+        setPendingCount(d.count)
+        setRequests(d.requests.slice(0, 3))
+      })
+      .catch(() => {})
+  }, [isViewer])
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 sm:p-8">
-      <div className="max-w-xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-            <p className="text-sm text-slate-500 mt-0.5">You are signed in</p>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* Admin-only link — viewers never see it (server also enforces this) */}
-            {isAdmin && (
-              <Link
-                to="/admin"
-                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
-              >
-                Admin panel
-              </Link>
-            )}
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
-            >
-              Sign out
-            </button>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-14 h-14 rounded-full bg-indigo-100 flex items-center justify-center text-2xl font-bold text-indigo-600 select-none">
-              {(user?.full_name || user?.email || '?').charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <p className="font-semibold text-slate-900">{user?.full_name || '—'}</p>
-              <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${ROLE_BADGE[user?.role] || 'bg-slate-100 text-slate-700'}`}>
-                {user?.role}
-              </span>
-            </div>
-          </div>
-
-          <div className="text-sm">
-            <Row label="Email" value={user?.email} />
-            <Row label="Role" value={user?.role} />
-            <Row label="User ID" value={<span className="font-mono text-xs text-slate-500">{user?.id}</span>} />
-          </div>
-        </div>
-
-        {/* Shared data: visible to both admin and viewer */}
-        <div className="mt-4 bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-          <p className="text-sm font-semibold text-slate-800 mb-3">Account statistics</p>
-          {statsError ? (
-            <p className="text-sm text-red-600">{statsError}</p>
-          ) : !stats ? (
-            <p className="text-sm text-slate-400">Loading…</p>
+    <AppLayout pendingCount={pendingCount} width="max-w-6xl">
+      <PageHeader
+        eyebrow="Overview"
+        title={`Welcome back, ${displayName(user)}`}
+        description="Here's what's happening across your StreamHub account today."
+        actions={
+          isViewer ? (
+            <Link to="/connections">
+              <Button size="md">
+                Manage network
+                <ArrowRight className="w-4 h-4" strokeWidth={2.4} />
+              </Button>
+            </Link>
           ) : (
-            <div className="grid grid-cols-3 gap-3 text-center">
-              <Stat label="Total" value={stats.total} />
-              <Stat label="Admins" value={stats.admins} />
-              <Stat label="Viewers" value={stats.viewers} />
-            </div>
-          )}
-        </div>
+            <Link to="/admin">
+              <Button size="md">
+                Admin console
+                <ArrowRight className="w-4 h-4" strokeWidth={2.4} />
+              </Button>
+            </Link>
+          )
+        }
+      />
 
-        <p className="mt-4 text-center text-xs text-slate-400">
-          {isAdmin
-            ? 'You have full administrative access.'
-            : 'You have read-only access. Admin features are hidden and blocked by the server.'}
-        </p>
+      {/* ── Metrics row ───────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {isViewer && (
+          <Metric
+            label="My connections"
+            value={connCount}
+            Icon={Users2}
+            tone="jade"
+            to="/connections"
+          />
+        )}
+        {isViewer && (
+          <Metric
+            label="Pending requests"
+            value={pendingCount}
+            Icon={UserPlus}
+            tone="sunrise"
+            to="/connections"
+            emphasise={pendingCount > 0}
+          />
+        )}
+        <Metric label="Total members" value={stats?.total} Icon={Activity} tone="slate" />
+        {isAdmin && <Metric label="Admins" value={stats?.admins} Icon={ShieldCheck} tone="jade" />}
+        <Metric label="Viewers" value={stats?.viewers} Icon={Eye} tone="slate" />
       </div>
+
+      {statsError && (
+        <div className="mb-6 px-4 py-3 rounded-lg bg-rose-50 border border-rose-200 text-[13px] text-rose-700">
+          {statsError}
+        </div>
+      )}
+
+      {/* ── Two-column body ───────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* profile */}
+        <Card className="lg:col-span-1" padded={false}>
+          <div className="h-20 rounded-t-xl bg-gradient-to-r from-teal-500 via-emerald-500 to-amber-400" />
+          <div className="px-5 pb-5">
+            <div className="-mt-9 mb-4">
+              <UserAvatar
+                seed={user?.id}
+                label={displayName(user)}
+                size="lg"
+                status="online"
+                className="ring-4 ring-white rounded-full"
+              />
+            </div>
+
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[15px] font-semibold text-slate-900 truncate">
+                  {displayName(user)}
+                </p>
+                <p className="text-[13px] text-slate-500 truncate">{user?.email}</p>
+              </div>
+              <Badge tone={isAdmin ? 'jade' : 'emerald'} icon={isAdmin ? ShieldCheck : BadgeCheck}>
+                <span className="capitalize">{user?.role}</span>
+              </Badge>
+            </div>
+
+            <dl className="mt-5 pt-5 border-t border-slate-100 space-y-3">
+              <Row Icon={Mail} label="Email">
+                <span className="text-slate-700 truncate block">{user?.email}</span>
+              </Row>
+              <Row Icon={BadgeCheck} label="Account ID">
+                <CopyId id={user?.id} />
+              </Row>
+            </dl>
+          </div>
+        </Card>
+
+        {/* activity / next steps */}
+        <div className="lg:col-span-2 space-y-5">
+          {isViewer ? (
+            <Card>
+              <SectionTitle
+                description={
+                  pendingCount > 0
+                    ? `${pendingCount} ${pendingCount === 1 ? 'person wants' : 'people want'} to connect with you.`
+                    : 'You have no pending connection requests.'
+                }
+                action={
+                  pendingCount > 0 && (
+                    <Link to="/connections">
+                      <Button size="sm" variant="accent">
+                        Review
+                      </Button>
+                    </Link>
+                  )
+                }
+              >
+                Connection requests
+              </SectionTitle>
+
+              {requests.length === 0 ? (
+                <div className="py-8 text-center border border-dashed border-slate-200 rounded-lg">
+                  <UserPlus className="w-6 h-6 mx-auto mb-2 text-slate-300" strokeWidth={1.8} />
+                  <p className="text-[13px] font-medium text-slate-600">Nothing waiting on you</p>
+                  <p className="mt-0.5 text-[12px] text-slate-400">
+                    New requests will appear here.
+                  </p>
+                </div>
+              ) : (
+                <ul className="divide-y divide-slate-100">
+                  {requests.map((r) => (
+                    <li key={r.connectionId} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                      <UserAvatar seed={r.from?.id} label={displayName(r.from)} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[13px] font-semibold text-slate-900 truncate">
+                          {displayName(r.from)}
+                        </p>
+                        <p className="text-[12px] text-slate-500 truncate">{r.from?.email}</p>
+                      </div>
+                      <span className="shrink-0 inline-flex items-center gap-1.5 text-[12px] text-slate-400">
+                        <CalendarDays className="w-3.5 h-3.5" strokeWidth={2} />
+                        {relativeTime(r.created_at)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          ) : (
+            <Card>
+              <SectionTitle description="Manage accounts, roles and platform access.">
+                Administration
+              </SectionTitle>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <QuickLink
+                  to="/admin"
+                  Icon={Users2}
+                  title="Manage accounts"
+                  text="Review every member, change roles, remove access."
+                />
+                <QuickLink
+                  to="/admin"
+                  Icon={ShieldCheck}
+                  title="Role assignments"
+                  text="Promote trusted members or revoke admin rights."
+                />
+              </div>
+            </Card>
+          )}
+
+          {/* role capability summary */}
+          <Card>
+            <SectionTitle description="What this account can do on the platform.">
+              Access level
+            </SectionTitle>
+            <ul className="space-y-2.5">
+              {(isAdmin
+                ? [
+                    'Full administrative access across all accounts',
+                    'Promote or demote member roles',
+                    'Remove accounts from the platform',
+                  ]
+                : [
+                    'Browse and connect with other creators',
+                    'Accept or decline incoming connection requests',
+                    'Read-only access — administrative areas are blocked',
+                  ]
+              ).map((line) => (
+                <li key={line} className="flex items-start gap-2.5">
+                  <span className="mt-1.5 w-1.5 h-1.5 shrink-0 rounded-full bg-teal-500" />
+                  <span className="text-[13px] text-slate-600">{line}</span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </div>
+      </div>
+    </AppLayout>
+  )
+}
+
+/* ── pieces ─────────────────────────────────────────────────────── */
+
+const METRIC_TONES = {
+  jade: 'bg-teal-50 text-teal-700',
+  sunrise: 'bg-amber-50 text-amber-700',
+  slate: 'bg-slate-100 text-slate-600',
+}
+
+function Metric({ label, value, Icon, tone, to, emphasise }) {
+  const body = (
+    <div
+      className={`h-full bg-white rounded-xl border p-4 transition
+        ${emphasise ? 'border-amber-300 shadow-sm' : 'border-slate-200'}
+        ${to ? 'hover:border-slate-300 hover:shadow-sm' : ''}`}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <span className={`w-8 h-8 shrink-0 rounded-lg flex items-center justify-center ${METRIC_TONES[tone]}`}>
+          <Icon className="w-4 h-4" strokeWidth={2.2} />
+        </span>
+        {to && <ArrowRight className="w-3.5 h-3.5 shrink-0 text-slate-300" strokeWidth={2.4} />}
+      </div>
+      <p className="mt-3 text-2xl font-bold text-slate-900 tabular leading-none">
+        {value ?? <span className="inline-block w-8 h-6 rounded bg-slate-100 animate-pulse align-middle" />}
+      </p>
+      <p className="mt-1.5 text-[12px] font-medium text-slate-500 truncate">{label}</p>
+    </div>
+  )
+  return to ? <Link to={to}>{body}</Link> : body
+}
+
+function Row({ Icon, label, children }) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <dt className="inline-flex items-center gap-2 text-[13px] text-slate-500 shrink-0">
+        <Icon className="w-3.5 h-3.5" strokeWidth={2} />
+        {label}
+      </dt>
+      <dd className="min-w-0 text-[13px] text-right">{children}</dd>
     </div>
   )
 }
 
-function Row({ label, value }) {
+function QuickLink({ to, Icon, title, text }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-1 py-3 border-b border-slate-100 last:border-0">
-      <span className="text-slate-500 sm:w-24 shrink-0">{label}</span>
-      <span className="font-medium text-slate-800">{value}</span>
-    </div>
-  )
-}
-
-function Stat({ label, value }) {
-  return (
-    <div className="rounded-xl bg-slate-50 border border-slate-200 py-3">
-      <p className="text-xl font-bold text-slate-900">{value}</p>
-      <p className="text-xs text-slate-500 mt-0.5">{label}</p>
-    </div>
+    <Link
+      to={to}
+      className="group flex items-start gap-3 p-4 rounded-lg border border-slate-200
+        hover:border-teal-300 hover:bg-teal-50/40 transition"
+    >
+      <span className="w-8 h-8 shrink-0 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center">
+        <Icon className="w-4 h-4" strokeWidth={2.2} />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[13px] font-semibold text-slate-900">{title}</span>
+        <span className="block mt-0.5 text-[12px] text-slate-500 leading-relaxed">{text}</span>
+      </span>
+    </Link>
   )
 }

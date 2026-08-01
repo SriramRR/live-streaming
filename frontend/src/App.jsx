@@ -1,10 +1,10 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
-import RoleSelect from './pages/RoleSelect'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
+import Connections from './pages/Connections'
 import AdminPanel from './pages/AdminPanel'
 import Forbidden from './pages/Forbidden'
 import NotFound from './pages/NotFound'
@@ -14,10 +14,9 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          {/* Public: choose a role, then sign in / register for it */}
-          <Route path="/" element={<RoleSelect />} />
-          <Route path="/login/:role" element={<Login />} />
-          <Route path="/register/:role" element={<Register />} />
+          {/* Public — one sign-in for everyone; the role decides where you land */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
           {/* Any authenticated role */}
           <Route
@@ -29,7 +28,17 @@ export default function App() {
             }
           />
 
-          {/* Admin only — viewers are redirected to /forbidden */}
+          {/* Viewer only */}
+          <Route
+            path="/connections"
+            element={
+              <ProtectedRoute roles={['viewer']}>
+                <Connections />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Admin only */}
           <Route
             path="/admin"
             element={
@@ -40,6 +49,7 @@ export default function App() {
           />
 
           <Route path="/forbidden" element={<Forbidden />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AuthProvider>

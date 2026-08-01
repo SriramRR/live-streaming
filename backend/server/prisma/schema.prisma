@@ -509,14 +509,33 @@ model profiles {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model app_users {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email         String   @unique
-  password_hash String
-  full_name     String?
-  role          String   @default("viewer")
-  created_at    DateTime @default(now()) @db.Timestamptz(6)
-  updated_at    DateTime @default(now()) @db.Timestamptz(6)
+  id                                              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                                           String        @unique
+  password_hash                                   String
+  full_name                                       String?
+  role                                            String        @default("viewer")
+  created_at                                      DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at                                      DateTime      @default(now()) @db.Timestamptz(6)
+  connections_connections_addressee_idToapp_users connections[] @relation("connections_addressee_idToapp_users")
+  connections_connections_requester_idToapp_users connections[] @relation("connections_requester_idToapp_users")
 
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model connections {
+  id                                            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  requester_id                                  String    @db.Uuid
+  addressee_id                                  String    @db.Uuid
+  status                                        String    @default("pending")
+  created_at                                    DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at                                    DateTime  @default(now()) @db.Timestamptz(6)
+  app_users_connections_addressee_idToapp_users app_users @relation("connections_addressee_idToapp_users", fields: [addressee_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  app_users_connections_requester_idToapp_users app_users @relation("connections_requester_idToapp_users", fields: [requester_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([addressee_id, status], map: "connections_addressee_idx")
+  @@index([requester_id, status], map: "connections_requester_idx")
   @@schema("public")
 }
 

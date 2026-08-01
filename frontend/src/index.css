@@ -1,14 +1,94 @@
 @import "tailwindcss";
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+/* ─────────────────────────────────────────────────────────────
+   Tropical Jade Sunrise — design tokens
+   jade/teal (primary)  ->  sunrise amber (accent)
+
+   surface   #FFFFFF        border    #E2E8F0
+   heading   #0F172A        body      #475569       muted #94A3B8
+   primary   teal-600  #0D9488   →  emerald-600 #059669
+   accent    amber-500 #F59E0B   →  orange-500  #F97316
+   states    connected=emerald · sent=amber · received=orange · danger=rose
+
+   NOTE: everything custom below is wrapped in @layer. Unlayered CSS wins over
+   ALL layered rules in the cascade, so a bare `* { margin:0; padding:0 }` here
+   would silently disable every Tailwind padding/margin utility. Tailwind's
+   preflight already applies that reset inside @layer base.
+   ───────────────────────────────────────────────────────────── */
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: #ffffff;
+    color: #0f172a;
+  }
+
+  ::selection {
+    background-color: #99f6e4;
+    color: #0f172a;
+  }
+
+  :focus-visible {
+    outline: 2px solid #0d9488;
+    outline-offset: 2px;
+  }
+
+  /* Slim, neutral scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 9999px;
+    border: 2px solid #ffffff;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: #94a3b8;
+  }
 }
 
-body {
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  background-color: #f8fafc;
-  color: #1e293b;
+@layer utilities {
+  /* Numbers line up in stat rows and tables */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Motion: short and functional, never decorative */
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@layer utilities {
+  .animate-slide-in-right { animation: slide-in-right 220ms cubic-bezier(0.32, 0.72, 0, 1); }
+  .animate-fade-in        { animation: fade-in 160ms ease-out; }
+  .animate-rise-in        { animation: rise-in 200ms cubic-bezier(0.32, 0.72, 0, 1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-in-right,
+  .animate-fade-in,
+  .animate-rise-in {
+    animation: none;
+  }
 }

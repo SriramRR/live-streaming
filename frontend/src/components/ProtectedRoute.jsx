@@ -13,13 +13,17 @@ export default function ProtectedRoute({ children, roles }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="relative w-9 h-9">
+          <div className="absolute inset-0 rounded-full border-[3px] border-slate-200" />
+          <div className="absolute inset-0 rounded-full border-[3px] border-transparent
+            border-t-teal-600 animate-spin" />
+        </div>
       </div>
     )
   }
 
-  if (!user) return <Navigate to="/" replace />
+  if (!user) return <Navigate to="/login" replace />
 
   if (roles && !roles.includes(user.role)) {
     return <Navigate to="/forbidden" replace />
